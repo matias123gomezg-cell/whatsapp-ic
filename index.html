@@ -1,0 +1,753 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075e54">
+<title>WhatsApp IC</title>
+<link rel="icon" href="assets/logo-whatsapp.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{--green:#075e54;--green2:#128c7e;--lime:#25d366;--bg:#0b141a;--panel:#111b21;--panel2:#202c33;--line:#26353d;--text:#e9edef;--muted:#8696a0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+button,input,textarea{font:inherit}
+button{cursor:pointer;border:0}
+.hidden{display:none!important}
+#setup{max-width:540px;margin:7vh auto;padding:28px;background:var(--panel);border:1px solid var(--line);border-radius:18px}
+.brand{text-align:center}
+.brand img{width:86px;height:86px;object-fit:contain;border-radius:50%;background:white}
+.brand h1{margin:12px 0 4px}
+.muted{color:var(--muted)}
+label{display:block;margin:15px 0 6px;color:#cbd5d9;font-size:13px}
+input,textarea{width:100%;padding:13px;border:1px solid var(--line);border-radius:10px;background:#202c33;color:var(--text);outline:none}
+input:focus,textarea:focus{border-color:var(--lime)}
+input[type=file]{padding:10px}
+.primary{background:var(--lime);color:#062b1b;padding:12px 18px;border-radius:10px;font-weight:700}
+.secondary{background:#26353d;color:var(--text);padding:10px 14px;border-radius:9px}
+.danger{background:#542b2b;color:#ffdede;padding:10px 14px;border-radius:9px}
+#app{height:100dvh;max-width:1500px;margin:auto;display:grid;grid-template-columns:370px 1fr;background:var(--panel)}
+.sidebar{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.top{padding:16px;background:var(--panel2);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brandmini{display:flex;align-items:center;gap:10px;font-weight:800}
+.brandmini img{width:38px;height:38px;border-radius:50%;background:white;object-fit:contain}
+.tabs{display:flex;background:var(--panel2);padding:0 10px;gap:5px}
+.tab{flex:1;background:transparent;color:var(--muted);padding:13px 4px;border-bottom:3px solid transparent}
+.tab.active{color:var(--lime);border-color:var(--lime)}
+.list{overflow:auto;flex:1}
+.chatrow,.statusrow{display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #1c292f;cursor:pointer}
+.chatrow:hover,.statusrow:hover{background:#202c33}
+.avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#30434c;display:grid;place-items:center;flex:none;font-weight:700;color:white}
+.rowtext{min-width:0;flex:1}
+.rowtext strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.preview{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.right{font-size:11px;color:var(--muted)}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.welcome{margin:auto;text-align:center;max-width:440px;padding:25px}
+.welcome img{width:130px;border-radius:50%;background:white}
+.welcome h2{font-weight:400}
+.chathead{display:flex;align-items:center;gap:12px;padding:12px 18px;background:var(--panel2);border-bottom:1px solid var(--line)}
+.chathead .rowtext{flex:1}
+.messages{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:8px;background:radial-gradient(#16252b 1px,transparent 1px);background-size:22px 22px}
+.bubble{max-width:min(75%,620px);padding:9px 12px;border-radius:10px;background:#202c33;align-self:flex-start;overflow-wrap:anywhere;box-shadow:0 1px 1px #0004}
+.bubble.mine{background:#005c4b;align-self:flex-end}
+.sender{font-size:12px;color:#8fe2b4;margin-bottom:4px}
+.stamp{text-align:right;font-size:10px;color:#b4c9c2;margin-top:5px}
+.composer{display:flex;gap:10px;padding:12px;background:var(--panel2)}
+.composer input{border-radius:25px}
+.composer button{border-radius:50%;width:46px;height:46px;background:var(--lime);font-size:19px}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.modalback{position:fixed;inset:0;background:#0009;display:grid;place-items:center;padding:15px;z-index:5}
+.modal{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;max-height:90dvh;overflow:auto}
+.modal h3{margin-top:0}
+.actions{display:flex;gap:9px;justify-content:flex-end;margin-top:18px}
+.plus{border-radius:50%;width:40px;height:40px;background:#26353d;color:var(--lime);font-size:25px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#26353d;padding:12px 18px;border-radius:12px;z-index:10;box-shadow:0 5px 25px #0008;max-width:90%;text-align:center}
+.statecard{padding:15px;border-bottom:1px solid var(--line)}
+.statecolor{border-radius:12px;padding:25px 16px;text-align:center;min-height:110px;display:grid;place-items:center;font-size:19px;overflow-wrap:anywhere}
+@media(max-width:700px){
+#app{grid-template-columns:1fr;height:100dvh}
+.sidebar{border:0}
+.main{display:none}
+.main.mobileopen{display:flex;position:fixed;inset:0;z-index:3}
+.sidebar.mobilehide{display:none}
+.back{display:inline-block!important}
+#setup{margin:18px 12px;padding:22px}
+.messages{padding:14px}
+.bubble{max-width:88%}
+}
+.back{display:none;background:transparent;color:var(--lime);font-size:22px}
+</style>
+</head>
+
+<body>
+
+<section id="setup">
+ <div class="brand">
+  <img src="assets/logo-whatsapp.png" alt="Logo WhatsApp">
+  <h1>WhatsApp IC</h1>
+  <div class="muted">Tu mensajería dentro del roleplay</div>
+ </div>
+
+ <div id="setupForm">
+  <label>Usuario de Discord</label>
+  <input id="discord" placeholder="Ej. usuario_discord" maxlength="40">
+
+  <label>Nombre en WhatsApp</label>
+  <input id="displayName" placeholder="Nombre IC" maxlength="32">
+
+  <label>Foto de perfil (opcional)</label>
+  <input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp">
+
+  <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+   <img id="avatarPreview" src="assets/logo-whatsapp.png" alt="Vista previa" style="width:64px;height:64px;border-radius:50%;object-fit:cover;background:#26353d">
+   <span class="muted" style="font-size:12px">Vista previa de tu foto. Puedes elegirla desde la galería del celular.</span>
+  </div>
+
+  <p class="muted" style="font-size:12px">Tu cuenta queda vinculada a este navegador. El nombre de Discord se registra una sola vez, pero no se verifica con Discord.</p>
+
+  <button class="primary" id="register" style="width:100%;margin-top:15px">Crear mi cuenta</button>
+ </div>
+</section>
+
+<div id="app" class="hidden">
+ <aside class="sidebar" id="sidebar">
+  <div class="top">
+   <div class="brandmini">
+    <img src="assets/logo-whatsapp.png">
+    <span>WhatsApp IC</span>
+   </div>
+   <button class="plus" id="plus">+</button>
+  </div>
+
+  <div class="tabs">
+   <button class="tab active" data-tab="all">Todos</button>
+   <button class="tab" data-tab="groups">Grupos</button>
+   <button class="tab" data-tab="states">Estados</button>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div style="padding:12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)" id="myNumber"></div>
+ </aside>
+
+ <main class="main" id="main">
+  <div class="welcome">
+   <img src="assets/logo-whatsapp.png">
+   <h2>WhatsApp IC</h2>
+   <p class="muted">Selecciona una conversación o agrega un contacto para comenzar.</p>
+  </div>
+ </main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toast" class="hidden"></div>
+
+<script>
+/* =========================================
+   CONEXIÓN SUPABASE
+   Pega aquí tu Project URL y tu publishable key.
+========================================= */
+
+const SUPABASE_URL="https://pkjwtndemghylpwmgoax.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_x7P2c_lRfL9OcBJtdbuH3g_08Bn-4kw";
+
+let sb=null,user=null,profile=null,currentChat=null,activeTab="all",channel=null,allChats=[];
+
+const $=id=>document.getElementById(id);
+
+function toast(t){
+ $("toast").textContent=t;
+ $("toast").classList.remove("hidden");
+ setTimeout(()=>$("toast").classList.add("hidden"),3200);
+}
+
+function esc(s=""){
+ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function initials(s=""){
+ return esc(s.trim().slice(0,1).toUpperCase()||"?");
+}
+
+function avatar(p,size=""){
+ return p?.avatar_url
+ ? `<img class="avatar ${size}" src="${esc(p.avatar_url)}">`
+ : `<div class="avatar ${size}">${initials(p?.display_name)}</div>`;
+}
+
+/* =========================================
+   INICIO Y CONEXIÓN
+========================================= */
+
+async function init(){
+ if(
+  SUPABASE_URL.startsWith("PEGA_") ||
+  SUPABASE_ANON_KEY.startsWith("PEGA_")
+ ){
+  toast("Falta conectar Supabase. Revisa la URL y la clave pública.");
+  $("register").disabled=true;
+  return;
+ }
+
+ try{
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+  let {data:{session},error:sessionError}=await sb.auth.getSession();
+  if(sessionError)throw sessionError;
+
+  if(!session){
+   let r=await sb.auth.signInAnonymously();
+   if(r.error)throw r.error;
+  }
+
+  let auth=await sb.auth.getUser();
+  if(auth.error)throw auth.error;
+
+  user=auth.data.user;
+
+  let r=await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();
+  if(r.error)throw r.error;
+
+  if(r.data){
+   profile=r.data;
+   showApp();
+  }else{
+   $("setup").classList.remove("hidden");
+  }
+
+ }catch(e){
+  toast("Error de conexión: "+(e.message||"Revisa Supabase."));
+ }
+}
+
+/* =========================================
+   FOTO DE PERFIL
+========================================= */
+
+async function fileToData(file){
+ if(!file)return null;
+
+ if(!file.type.startsWith("image/")){
+  throw Error("Selecciona una imagen PNG, JPG o WEBP.");
+ }
+
+ if(file.size>8*1024*1024){
+  throw Error("La foto original debe pesar menos de 8 MB.");
+ }
+
+ return await new Promise((resolve,reject)=>{
+  let fr=new FileReader();
+
+  fr.onload=()=>{
+   let im=new Image();
+
+   im.onload=()=>{
+    let c=document.createElement("canvas");
+    let scale=Math.min(1,256/Math.max(im.width,im.height));
+    let w=Math.max(1,Math.round(im.width*scale));
+    let h=Math.max(1,Math.round(im.height*scale));
+
+    c.width=w;
+    c.height=h;
+
+    c.getContext("2d").drawImage(im,0,0,w,h);
+    resolve(c.toDataURL("image/jpeg",.72));
+   };
+
+   im.onerror=()=>reject(Error("No se pudo abrir esa imagen."));
+   im.src=fr.result;
+  };
+
+  fr.onerror=()=>reject(Error("No se pudo leer el archivo de imagen."));
+  fr.readAsDataURL(file);
+ });
+}
+
+$("avatarFile").addEventListener("change",async()=>{
+ try{
+  let file=$("avatarFile").files[0];
+  if(!file)return;
+
+  $("avatarPreview").src=await fileToData(file);
+
+ }catch(e){
+  toast(e.message);
+  $("avatarFile").value="";
+ }
+});
+
+/* =========================================
+   REGISTRO
+========================================= */
+
+$("register").onclick=async()=>{
+ try{
+  let discord=$("discord").value.trim().replace(/^@/,"");
+  let name=$("displayName").value.trim();
+
+  if(!discord||!name){
+   return toast("Completa tu usuario de Discord y tu nombre IC.");
+  }
+
+  $("register").disabled=true;
+
+  let photo=await fileToData($("avatarFile").files[0]);
+
+  let {data,error}=await sb.rpc("register_profile",{
+   p_discord_username:discord,
+   p_display_name:name,
+   p_avatar_url:photo
+  });
+
+  if(error)throw error;
+
+  profile=data;
+  showApp();
+
+ }catch(e){
+  toast(e.message||"No se pudo crear la cuenta.");
+ }finally{
+  $("register").disabled=false;
+ }
+};
+
+/* =========================================
+   MOSTRAR APLICACIÓN
+========================================= */
+
+function showApp(){
+ $("setup").classList.add("hidden");
+ $("app").classList.remove("hidden");
+ $("myNumber").textContent=`Tu número IC: ${profile.phone_number}`;
+ loadChats();
+ subscribeRealtime();
+}
+
+/* =========================================
+   CONVERSACIONES
+========================================= */
+
+async function loadChats(){
+ let {data:members,error}=await sb.from("chat_members")
+  .select("chat_id, chats(id,name,is_group,updated_at)")
+  .eq("user_id",user.id);
+
+ if(error){
+  toast(error.message);
+  return;
+ }
+
+ let ids=(members||[]).map(x=>x.chat_id);
+
+ if(!ids.length){
+  allChats=[];
+  renderList();
+  return;
+ }
+
+ let {data:msgs}=await sb.from("messages")
+  .select("chat_id,body,created_at,sender_id")
+  .in("chat_id",ids)
+  .order("created_at",{ascending:false});
+
+ let last={};
+
+ (msgs||[]).forEach(m=>{
+  if(!last[m.chat_id])last[m.chat_id]=m;
+ });
+
+ let enriched=await Promise.all((members||[]).map(async m=>{
+  let c=m.chats;
+  if(!c)return null;
+
+  let {data:ms}=await sb.from("chat_members")
+   .select("user_id")
+   .eq("chat_id",c.id);
+
+  let other=(ms||[])
+   .filter(x=>x.user_id!==user.id)
+   .map(x=>x.user_id);
+
+  let people=[];
+
+  if(other.length){
+   let q=await sb.from("profiles")
+    .select("id,display_name,phone_number,avatar_url")
+    .in("id",other);
+
+   people=q.data||[];
+  }
+
+  return {...c,last:last[c.id],people};
+ }));
+
+ allChats=enriched.filter(Boolean).sort((a,b)=>
+  new Date(b.last?.created_at||b.updated_at)-
+  new Date(a.last?.created_at||a.updated_at)
+ );
+
+ renderList();
+}
+
+function renderList(){
+ let arr=activeTab==="groups"
+  ?allChats.filter(c=>c.is_group)
+  :allChats;
+
+ if(activeTab==="states"){
+  loadStates();
+  return;
+ }
+
+ $("list").innerHTML=arr.length
+ ?arr.map(c=>{
+  let title=c.is_group?c.name:(c.people[0]?.display_name||"Chat privado");
+
+  return `<div class="chatrow" data-chat="${c.id}">
+   ${c.is_group?'<div class="avatar">👥</div>':avatar(c.people[0])}
+   <div class="rowtext">
+    <strong>${esc(title)}</strong>
+    <div class="preview">${esc(c.last?.body||"Sin mensajes todavía")}</div>
+   </div>
+   <div class="right">${c.last?new Date(c.last.created_at).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}):""}</div>
+  </div>`;
+ }).join("")
+ :'<div class="empty">Todavía no tienes conversaciones.</div>';
+
+ document.querySelectorAll("[data-chat]").forEach(el=>{
+  el.onclick=()=>openChat(el.dataset.chat);
+ });
+}
+
+/* =========================================
+   ESTADOS
+========================================= */
+
+async function loadStates(){
+ let {data,error}=await sb.from("statuses")
+  .select("id,user_id,body,bg_color,created_at")
+  .gt("expires_at",new Date().toISOString())
+  .order("created_at",{ascending:false});
+
+ if(error){
+  $("list").innerHTML=`<div class="empty">${esc(error.message)}</div>`;
+  return;
+ }
+
+ let ids=[...new Set((data||[]).map(s=>s.user_id))];
+ let people={};
+
+ if(ids.length){
+  let q=await sb.from("profiles")
+   .select("id,display_name,avatar_url")
+   .in("id",ids);
+
+  (q.data||[]).forEach(p=>people[p.id]=p);
+ }
+
+ $("list").innerHTML=
+ `<div class="statecard">
+  <button class="primary" id="addState">＋ Publicar mi estado</button>
+ </div>`+
+ (data||[]).map(s=>
+  `<div class="statecard">
+   ${avatar(people[s.user_id])}
+   <strong>${esc(people[s.user_id]?.display_name||"Usuario")}</strong>
+   <div class="statecolor" style="background:${esc(s.bg_color)}">${esc(s.body)}</div>
+   <div class="right">${new Date(s.created_at).toLocaleString("es-CO")}</div>
+  </div>`
+ ).join("");
+
+ $("addState").onclick=stateModal;
+}
+
+/* =========================================
+   VENTANAS
+========================================= */
+
+function modal(content){
+ $("modalRoot").innerHTML=
+ `<div class="modalback" id="back">
+  <div class="modal">${content}</div>
+ </div>`;
+
+ $("back").onclick=e=>{
+  if(e.target.id==="back")closeModal();
+ };
+}
+
+function closeModal(){
+ $("modalRoot").innerHTML="";
+}
+
+$("plus").onclick=()=>{
+ modal(`
+  <h3>¿Qué quieres hacer?</h3>
+  <button class="secondary" style="width:100%;margin:6px 0" id="addContact">Agregar contacto</button>
+  <button class="secondary" style="width:100%;margin:6px 0" id="newGroup">Crear grupo</button>
+  <div class="actions">
+   <button class="secondary" id="cancel">Cerrar</button>
+  </div>
+ `);
+
+ $("addContact").onclick=contactModal;
+ $("newGroup").onclick=groupModal;
+ $("cancel").onclick=closeModal;
+};
+
+/* =========================================
+   AGREGAR CONTACTO
+========================================= */
+
+function contactModal(){
+ modal(`
+  <h3>Agregar contacto</h3>
+  <label>Número de WhatsApp IC</label>
+  <input id="contactNumber" inputmode="numeric" maxlength="6" placeholder="Ej. 312345">
+  <div class="actions">
+   <button class="secondary" id="cancel">Cancelar</button>
+   <button class="primary" id="findContact">Buscar</button>
+  </div>
+ `);
+
+ $("cancel").onclick=closeModal;
+
+ $("findContact").onclick=async()=>{
+  let n=$("contactNumber").value.trim();
+
+  if(!/^3\d{5}$/.test(n)){
+   return toast("Escribe un número válido de 6 dígitos que empiece por 3.");
+  }
+
+  let r=await sb.rpc("open_direct_chat",{p_phone_number:n});
+
+  if(r.error)return toast(r.error.message);
+
+  closeModal();
+  await loadChats();
+  openChat(r.data);
+ };
+}
+
+/* =========================================
+   CREAR GRUPO
+========================================= */
+
+function groupModal(){
+ modal(`
+  <h3>Crear grupo</h3>
+  <label>Nombre del grupo</label>
+  <input id="groupName" maxlength="40" placeholder="Nombre">
+  <label>Números de los participantes (separados por coma)</label>
+  <textarea id="groupNumbers" rows="3" placeholder="312345, 398765"></textarea>
+  <div class="actions">
+   <button class="secondary" id="cancel">Cancelar</button>
+   <button class="primary" id="makeGroup">Crear</button>
+  </div>
+ `);
+
+ $("cancel").onclick=closeModal;
+
+ $("makeGroup").onclick=async()=>{
+  let name=$("groupName").value.trim();
+  let nums=$("groupNumbers").value.split(",").map(x=>x.trim()).filter(Boolean);
+
+  if(!name)return toast("Escribe el nombre del grupo.");
+
+  let r=await sb.rpc("create_group",{
+   p_name:name,
+   p_phone_numbers:nums
+  });
+
+  if(r.error)return toast(r.error.message);
+
+  closeModal();
+  await loadChats();
+  openChat(r.data);
+ };
+}
+
+/* =========================================
+   PUBLICAR ESTADO
+========================================= */
+
+function stateModal(){
+ modal(`
+  <h3>Publicar estado</h3>
+  <label>¿Qué quieres compartir?</label>
+  <textarea id="stateText" maxlength="180" rows="3" placeholder="Escribe tu estado..."></textarea>
+  <label>Color de fondo</label>
+  <input id="stateColor" type="color" value="#075e54">
+  <div class="actions">
+   <button class="secondary" id="cancel">Cancelar</button>
+   <button class="primary" id="publish">Publicar</button>
+  </div>
+ `);
+
+ $("cancel").onclick=closeModal;
+
+ $("publish").onclick=async()=>{
+  let body=$("stateText").value.trim();
+
+  if(!body)return toast("Escribe algo para tu estado.");
+
+  let r=await sb.from("statuses").insert({
+   user_id:user.id,
+   body,
+   bg_color:$("stateColor").value
+  });
+
+  if(r.error)return toast(r.error.message);
+
+  closeModal();
+  loadStates();
+  toast("Estado publicado. Desaparecerá en 24 horas.");
+ };
+}
+
+/* =========================================
+   ABRIR CHAT
+========================================= */
+
+async function openChat(id){
+ currentChat=id;
+
+ let c=allChats.find(x=>x.id===id);
+ let title=c?.is_group?c.name:(c?.people[0]?.display_name||"Chat privado");
+
+ $("sidebar").classList.add("mobilehide");
+ $("main").classList.add("mobileopen");
+
+ $("main").innerHTML=`
+  <div class="chathead">
+   <button class="back" id="goBack">‹</button>
+   ${c?.is_group?'<div class="avatar">👥</div>':avatar(c?.people[0])}
+   <div class="rowtext">
+    <strong>${esc(title)}</strong>
+    <div class="preview">${c?.is_group?"Grupo":`Número ${esc(c?.people[0]?.phone_number||"")}`}</div>
+   </div>
+  </div>
+  <div class="messages" id="messages">
+   <div class="empty">Cargando mensajes...</div>
+  </div>
+  <form class="composer" id="sendForm">
+   <input id="messageInput" maxlength="2000" autocomplete="off" placeholder="Escribe un mensaje..." required>
+   <button aria-label="Enviar">➤</button>
+  </form>
+ `;
+
+ 
+$("goBack").onclick=()=>{
+  $("main").classList.remove("mobileopen");
+  $("sidebar").classList.remove("mobilehide");
+  currentChat=null;
+ };
+
+ await loadMessages();
+
+ $("sendForm").onsubmit=async e=>{
+  e.preventDefault();
+
+  let body=$("messageInput").value.trim();
+  if(!body)return;
+
+  let r=await sb.from("messages").insert({
+   chat_id:id,
+   sender_id:user.id,
+   body
+  });
+
+  if(r.error)return toast(r.error.message);
+
+  $("messageInput").value="";
+ };
+}
+
+/* =========================================
+   CARGAR MENSAJES
+========================================= */
+
+async function loadMessages(){
+ let box=$("messages");
+ if(!box)return;
+
+ let {data,error}=await sb.from("messages")
+  .select("id,sender_id,body,created_at")
+  .eq("chat_id",currentChat)
+  .order("created_at");
+
+ if(error){
+  box.innerHTML=`<div class="empty">${esc(error.message)}</div>`;
+  return;
+ }
+
+ let ids=[...new Set((data||[]).map(m=>m.sender_id))];
+ let names={};
+
+ if(ids.length){
+  let q=await sb.from("profiles")
+   .select("id,display_name")
+   .in("id",ids);
+
+  (q.data||[]).forEach(p=>names[p.id]=p.display_name);
+ }
+
+ box.innerHTML=(data||[]).map(m=>
+  `<div class="bubble ${m.sender_id===user.id?"mine":""}">
+   ${m.sender_id!==user.id?`<div class="sender">${esc(names[m.sender_id]||"Usuario")}</div>`:""}
+   ${esc(m.body)}
+   <div class="stamp">${new Date(m.created_at).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"})}</div>
+  </div>`
+ ).join("")||'<div class="empty">Este chat está vacío. ¡Saluda!</div>';
+
+ box.scrollTop=box.scrollHeight;
+}
+
+/* =========================================
+   ACTUALIZACIÓN EN TIEMPO REAL
+========================================= */
+
+function subscribeRealtime(){
+ if(channel)sb.removeChannel(channel);
+
+ channel=sb.channel("ic-live-"+user.id)
+  .on("postgres_changes",{
+   event:"*",
+   schema:"public",
+   table:"messages"
+  },payload=>{
+   if(payload.new?.chat_id===currentChat)loadMessages();
+   loadChats();
+  })
+  .on("postgres_changes",{
+   event:"*",
+   schema:"public",
+   table:"statuses"
+  },()=>{
+   if(activeTab==="states")loadStates();
+  })
+  .subscribe();
+}
+
+/* =========================================
+   PESTAÑAS
+========================================= */
+
+document.querySelectorAll(".tab").forEach(b=>{
+ b.onclick=()=>{
+  activeTab=b.dataset.tab;
+
+  document.querySelectorAll(".tab").forEach(x=>
+   x.classList.toggle("active",x===b)
+  );
+
+  renderList();
+ };
+});
+
+init();
+</script>
+</body>
+</html>
